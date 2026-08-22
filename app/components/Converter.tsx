@@ -23,6 +23,7 @@ import styles from "./Converter.module.css";
 type Status = "idle" | "converting" | "done" | "error";
 
 function errorTitle(error: ConvertError): string {
+  if (error.code === "INFRA_RATE_LIMITED") return "Demasiadas peticiones";
   if (error.code === "INFRA_UNAUTHORIZED") return "Acceso no autorizado";
   if (error.code === "NETWORK") return "Sin conexión con el servidor";
   if (error.layer === "infrastructure") return "Hay un problema con tu archivo";
