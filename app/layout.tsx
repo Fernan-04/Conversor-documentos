@@ -2,9 +2,9 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "doc2md — Conversor a Markdown",
+  title: "Markdocs — Conversor a Markdown",
   description:
-    "Convierte PDF, Word, PowerPoint y Excel a Markdown. Tus archivos se procesan en el servidor solo durante la conversión y no se guardan en ningún lado.",
+    "Convierte PDF, Word, PowerPoint, Excel, texto y CSV a Markdown. Tus archivos se procesan en el servidor solo durante la conversión y no se guardan en ningún lado.",
 };
 
 export const viewport: Viewport = {

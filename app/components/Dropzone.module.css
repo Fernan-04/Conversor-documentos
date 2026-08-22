@@ -21,11 +21,26 @@
 .zone:hover {
   border-color: var(--accent);
   background: var(--surface-2);
+  transform: translateY(-1px);
+}
+
+.zone:active {
+  transform: translateY(0);
 }
 
 .active {
   border-color: var(--accent);
   background: var(--accent-soft);
+  transform: scale(1.01);
+}
+
+.icon {
+  transition: transform 0.15s ease, color 0.15s ease;
+}
+
+.zone:hover .icon,
+.active .icon {
+  transform: translateY(-2px) scale(1.05);
 }
 
 .disabled {

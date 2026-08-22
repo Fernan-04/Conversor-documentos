@@ -150,3 +150,103 @@
   opacity: 0.5;
   cursor: not-allowed;
 }
+
+/* ---- Microinteracciones (se anulan solas con prefers-reduced-motion) ---- */
+.primaryBtn,
+.downloadBtn,
+.secondaryBtn,
+.ghostBtn {
+  transition: background 0.15s ease, transform 0.1s ease, border-color 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.primaryBtn:hover:not(:disabled),
+.downloadBtn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(15, 118, 110, 0.25);
+}
+
+.primaryBtn:active:not(:disabled),
+.downloadBtn:active:not(:disabled),
+.secondaryBtn:active:not(:disabled),
+.ghostBtn:active:not(:disabled) {
+  transform: translateY(0) scale(0.99);
+  box-shadow: none;
+}
+
+/* ---- Contador en vivo ---- */
+.counter {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+/* ---- Spinner del botón "Convirtiendo…" ---- */
+.spinner {
+  display: inline-block;
+  width: 1em;
+  height: 1em;
+  margin-right: 0.5em;
+  vertical-align: -0.15em;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ---- Acciones del resultado + botón secundario ---- */
+.resultActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  align-items: center;
+}
+
+.secondaryBtn {
+  min-height: 44px;
+  padding: 0 var(--space-4);
+  font-weight: 600;
+  color: var(--accent);
+  background: transparent;
+  border: 1px solid var(--accent);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+.secondaryBtn:hover {
+  background: var(--accent-soft);
+}
+
+/* ---- Vista previa del Markdown ---- */
+.preview {
+  margin: var(--space-3) 0 0;
+  padding: var(--space-3);
+  max-height: 280px;
+  overflow: auto;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 0.82rem;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
+  animation: previewIn 0.18s ease;
+}
+
+@keyframes previewIn {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

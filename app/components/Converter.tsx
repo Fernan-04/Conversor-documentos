@@ -34,14 +34,16 @@ export function Converter() {
   const [files, setFiles] = useState<File[]>([]);
   const [status, setStatus] = useState<Status>("idle");
   const [result, setResult] = useState<ConvertResult | null>(null);
+  // Texto del Markdown cuando es un solo archivo (para copiar / previsualizar);
+  // null si el resultado es un .zip de varios archivos.
+  const [resultText, setResultText] = useState<string | null>(null);
+  const [showPreview, setShowPreview] = useState(false);
+  const [copied, setCopied] = useState(false);
   const [error, setError] = useState<ConvertError | null>(null);
   const [slowHint, setSlowHint] = useState(false);
-  // null = desconocido; false = dormido (cold start probable); true = despierto.
   const [serverAwake, setServerAwake] = useState<boolean | null>(null);
   const slowTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Warm-up al montar: un GET /health despierta el plan gratis de Render y nos
-  // dice si estaba dormido, para avisar del cold start en el momento oportuno.
   useEffect(() => {
     let alive = true;
     pingHealth().then((ok) => {
@@ -63,10 +65,17 @@ export function Converter() {
     !tooLargeTotal &&
     status !== "converting";
 
-  function addFiles(incoming: File[]) {
+  function resetOutput() {
     setResult(null);
+    setResultText(null);
+    setShowPreview(false);
+    setCopied(false);
     setError(null);
     setStatus("idle");
+  }
+
+  function addFiles(incoming: File[]) {
+    resetOutput();
     setFiles((prev) => {
       const seen = new Set(prev.map(fileKey));
       const merged = [...prev];
@@ -79,16 +88,12 @@ export function Converter() {
 
   function removeFile(key: string) {
     setFiles((prev) => prev.filter((f) => fileKey(f) !== key));
-    setResult(null);
-    setError(null);
-    setStatus("idle");
+    resetOutput();
   }
 
   function clearAll() {
     setFiles([]);
-    setResult(null);
-    setError(null);
-    setStatus("idle");
+    resetOutput();
   }
 
   async function handleConvert() {
@@ -96,9 +101,10 @@ export function Converter() {
     setStatus("converting");
     setError(null);
     setResult(null);
+    setResultText(null);
+    setShowPreview(false);
+    setCopied(false);
     setSlowHint(false);
-    // Si sabemos que el servidor está dormido, avisamos del cold start ya; si no,
-    // usamos el temporizador de 3 s como respaldo.
     if (serverAwake === false) {
       setSlowHint(true);
     } else {
@@ -107,6 +113,8 @@ export function Converter() {
     try {
       const res = await convertFiles(files);
       setResult(res);
+      // Un solo archivo => tenemos el Markdown en texto para copiar/previsualizar.
+      setResultText(files.length === 1 ? await res.blob.text() : null);
       setStatus("done");
       setServerAwake(true);
     } catch (err) {
@@ -130,6 +138,17 @@ export function Converter() {
     if (result) downloadBlob(result.blob, result.filename);
   }
 
+  async function handleCopy() {
+    if (!resultText) return;
+    try {
+      await navigator.clipboard.writeText(resultText);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      /* El navegador no permite el portapapeles: no hacemos nada. */
+    }
+  }
+
   return (
     <section className={styles.card} aria-label="Conversor de documentos">
       <Dropzone onFiles={addFiles} disabled={status === "converting"} />
@@ -139,6 +158,13 @@ export function Converter() {
         onRemove={removeFile}
         disabled={status === "converting"}
       />
+
+      {files.length > 0 && (
+        <p className={styles.counter}>
+          {files.length} archivo{files.length !== 1 ? "s" : ""} ·{" "}
+          {formatBytes(totalBytes)} de {formatBytes(MAX_TOTAL_BYTES)}
+        </p>
+      )}
 
       {invalidFiles.length > 0 && (
         <p className={styles.warn} role="alert">
@@ -170,11 +196,16 @@ export function Converter() {
             onClick={handleConvert}
             disabled={!canConvert}
           >
-            {status === "converting"
-              ? "Convirtiendo…"
-              : files.length > 1
-                ? `Convertir ${files.length} archivos`
-                : "Convertir a Markdown"}
+            {status === "converting" ? (
+              <>
+                <span className={styles.spinner} aria-hidden="true" />
+                Convirtiendo…
+              </>
+            ) : files.length > 1 ? (
+              `Convertir ${files.length} archivos`
+            ) : (
+              "Convertir a Markdown"
+            )}
           </button>
           <button
             type="button"
@@ -207,13 +238,39 @@ export function Converter() {
             <p className={styles.successText}>
               ¡Listo! Tu Markdown está preparado.
             </p>
-            <button
-              type="button"
-              className={styles.downloadBtn}
-              onClick={handleDownload}
-            >
-              Descargar {result.filename}
-            </button>
+            <div className={styles.resultActions}>
+              <button
+                type="button"
+                className={styles.downloadBtn}
+                onClick={handleDownload}
+              >
+                Descargar {result.filename}
+              </button>
+              {resultText !== null && (
+                <>
+                  <button
+                    type="button"
+                    className={styles.secondaryBtn}
+                    onClick={handleCopy}
+                  >
+                    {copied ? "¡Copiado!" : "Copiar"}
+                  </button>
+                  <button
+                    type="button"
+                    className={styles.secondaryBtn}
+                    onClick={() => setShowPreview((v) => !v)}
+                    aria-expanded={showPreview}
+                  >
+                    {showPreview ? "Ocultar vista previa" : "Ver vista previa"}
+                  </button>
+                </>
+              )}
+            </div>
+            {resultText !== null && showPreview && (
+              <pre className={styles.preview} aria-label="Vista previa del Markdown">
+                {resultText}
+              </pre>
+            )}
           </div>
         )}
 

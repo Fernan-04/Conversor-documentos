@@ -12,7 +12,9 @@ export default function Home() {
         </div>
 
         <header className={styles.header}>
-          <h1 className={styles.title}>doc2md</h1>
+          <h1 className={styles.title}>
+            Mark<span className={styles.titleAccent}>docs</span>
+          </h1>
           <p className={styles.tagline}>
             Convierte <strong>PDF, Word, PowerPoint, Excel, texto y CSV</strong>{" "}
             a Markdown. Sin instalar nada.
