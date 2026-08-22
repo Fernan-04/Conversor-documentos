@@ -5,6 +5,12 @@ const API_URL = (
   process.env.NEXT_PUBLIC_API_URL ?? "https://api-conversor-gvzr.onrender.com"
 ).replace(/\/$/, "");
 
+// API key opcional para proteger el endpoint público de Render. Si el backend
+// define `API_KEY`, la web debe enviar la misma en la cabecera `X-API-Key`.
+// CAVEAT: `NEXT_PUBLIC_*` se incrusta en el bundle y es visible en la pestaña
+// Network — frena bots y accesos a la URL "pelada", no es un secreto fuerte.
+const API_KEY = process.env.NEXT_PUBLIC_API_KEY ?? "";
+
 export interface ApiErrorBody {
   code: string;
   message: string;
@@ -45,7 +51,12 @@ export async function convertFiles(files: File[]): Promise<ConvertResult> {
 
   let res: Response;
   try {
-    res = await fetch(`${API_URL}/convert`, { method: "POST", body: form });
+    // No fijamos Content-Type: el navegador pone el boundary de multipart solo.
+    res = await fetch(`${API_URL}/convert`, {
+      method: "POST",
+      body: form,
+      headers: API_KEY ? { "X-API-Key": API_KEY } : undefined,
+    });
   } catch {
     throw new ConvertError({
       code: "NETWORK",

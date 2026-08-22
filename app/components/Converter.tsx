@@ -1,13 +1,33 @@
 "use client";
 
-import { useRef, useState } from "react";
-import { ConvertError, convertFiles, type ConvertResult } from "../lib/api";
-import { downloadBlob, fileKey, isSupported } from "../lib/files";
+import { useEffect, useRef, useState } from "react";
+import {
+  ConvertError,
+  convertFiles,
+  pingHealth,
+  type ConvertResult,
+} from "../lib/api";
+import {
+  downloadBlob,
+  fileKey,
+  formatBytes,
+  MAX_FILES,
+  MAX_FILE_SIZE_BYTES,
+  MAX_TOTAL_BYTES,
+  validateFile,
+} from "../lib/files";
 import { Dropzone } from "./Dropzone";
 import { FileList } from "./FileList";
 import styles from "./Converter.module.css";
 
 type Status = "idle" | "converting" | "done" | "error";
+
+function errorTitle(error: ConvertError): string {
+  if (error.code === "INFRA_UNAUTHORIZED") return "Acceso no autorizado";
+  if (error.code === "NETWORK") return "Sin conexión con el servidor";
+  if (error.layer === "infrastructure") return "Hay un problema con tu archivo";
+  return "Algo falló de nuestro lado";
+}
 
 export function Converter() {
   const [files, setFiles] = useState<File[]>([]);
@@ -15,11 +35,32 @@ export function Converter() {
   const [result, setResult] = useState<ConvertResult | null>(null);
   const [error, setError] = useState<ConvertError | null>(null);
   const [slowHint, setSlowHint] = useState(false);
+  // null = desconocido; false = dormido (cold start probable); true = despierto.
+  const [serverAwake, setServerAwake] = useState<boolean | null>(null);
   const slowTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const hasUnsupported = files.some((f) => !isSupported(f.name));
+  // Warm-up al montar: un GET /health despierta el plan gratis de Render y nos
+  // dice si estaba dormido, para avisar del cold start en el momento oportuno.
+  useEffect(() => {
+    let alive = true;
+    pingHealth().then((ok) => {
+      if (alive) setServerAwake(ok);
+    });
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  const totalBytes = files.reduce((sum, f) => sum + f.size, 0);
+  const invalidFiles = files.filter((f) => validateFile(f) !== null);
+  const tooMany = files.length > MAX_FILES;
+  const tooLargeTotal = totalBytes > MAX_TOTAL_BYTES;
   const canConvert =
-    files.length > 0 && !hasUnsupported && status !== "converting";
+    files.length > 0 &&
+    invalidFiles.length === 0 &&
+    !tooMany &&
+    !tooLargeTotal &&
+    status !== "converting";
 
   function addFiles(incoming: File[]) {
     setResult(null);
@@ -55,11 +96,18 @@ export function Converter() {
     setError(null);
     setResult(null);
     setSlowHint(false);
-    slowTimer.current = setTimeout(() => setSlowHint(true), 3000);
+    // Si sabemos que el servidor está dormido, avisamos del cold start ya; si no,
+    // usamos el temporizador de 3 s como respaldo.
+    if (serverAwake === false) {
+      setSlowHint(true);
+    } else {
+      slowTimer.current = setTimeout(() => setSlowHint(true), 3000);
+    }
     try {
       const res = await convertFiles(files);
       setResult(res);
       setStatus("done");
+      setServerAwake(true);
     } catch (err) {
       setError(
         err instanceof ConvertError
@@ -81,8 +129,6 @@ export function Converter() {
     if (result) downloadBlob(result.blob, result.filename);
   }
 
-  const isInfra = error?.layer === "infrastructure" || error?.layer === "network";
-
   return (
     <section className={styles.card} aria-label="Conversor de documentos">
       <Dropzone onFiles={addFiles} disabled={status === "converting"} />
@@ -93,10 +139,25 @@ export function Converter() {
         disabled={status === "converting"}
       />
 
-      {hasUnsupported && (
+      {invalidFiles.length > 0 && (
         <p className={styles.warn} role="alert">
-          Hay archivos con un formato no soportado. Quítalos para poder convertir
-          (solo PDF, Word, PowerPoint y Excel).
+          Hay archivos que no se pueden convertir: revisa que el formato sea
+          compatible y que cada archivo no supere{" "}
+          {formatBytes(MAX_FILE_SIZE_BYTES)}. Quítalos para continuar.
+        </p>
+      )}
+
+      {tooMany && (
+        <p className={styles.warn} role="alert">
+          Puedes convertir hasta {MAX_FILES} archivos a la vez. Quita algunos
+          para continuar.
+        </p>
+      )}
+
+      {tooLargeTotal && !tooMany && (
+        <p className={styles.warn} role="alert">
+          El tamaño total supera {formatBytes(MAX_TOTAL_BYTES)}. Quita algún
+          archivo para continuar.
         </p>
       )}
 
@@ -141,7 +202,7 @@ export function Converter() {
         )}
 
         {status === "done" && result && (
-          <div className={styles.success}>
+          <div className={styles.success} aria-live="assertive">
             <p className={styles.successText}>
               ¡Listo! Tu Markdown está preparado.
             </p>
@@ -157,17 +218,16 @@ export function Converter() {
 
         {status === "error" && error && (
           <div className={styles.errorBox} role="alert">
-            <p className={styles.errorTitle}>
-              {isInfra
-                ? "Hay un problema con tu archivo"
-                : "Algo falló de nuestro lado"}
-            </p>
+            <p className={styles.errorTitle}>{errorTitle(error)}</p>
             <p className={styles.errorMsg}>{error.message}</p>
-            {!isInfra && (
-              <p className={styles.errorSub}>
-                Puedes intentarlo de nuevo en unos segundos.
-              </p>
-            )}
+            <button
+              type="button"
+              className={styles.retryBtn}
+              onClick={handleConvert}
+              disabled={!canConvert}
+            >
+              Reintentar
+            </button>
           </div>
         )}
       </div>

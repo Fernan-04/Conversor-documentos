@@ -16,13 +16,20 @@ export const viewport: Viewport = {
   ],
 };
 
+// Se ejecuta antes de pintar: aplica el tema guardado para evitar el parpadeo
+// (FOUC). Si no hay preferencia guardada, no toca nada y manda el CSS del sistema.
+const THEME_INIT = `(function(){try{var t=localStorage.getItem('theme');if(t==='light'||t==='dark'){document.documentElement.dataset.theme=t;}}catch(e){}})();`;
+
 export default function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
   return (
-    <html lang="es">
+    <html lang="es" suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: THEME_INIT }} />
+      </head>
       <body>{children}</body>
     </html>
   );

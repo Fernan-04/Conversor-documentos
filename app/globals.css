@@ -30,8 +30,12 @@
   --shadow: 0 1px 2px rgba(0, 0, 0, 0.05), 0 1px 3px rgba(0, 0, 0, 0.04);
 }
 
+/* Tokens del tema oscuro. Se aplican en dos casos:
+   1. El SO pide oscuro y el usuario NO ha forzado claro (:not([data-theme="light"])).
+   2. El usuario fuerza oscuro con el toggle (:root[data-theme="dark"]).
+   El tema claro es la base (:root de arriba); [data-theme="light"] usa esa base. */
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme="light"]) {
     --bg: #16171a;
     --surface: #1e2024;
     --surface-2: #26282d;
@@ -49,6 +53,25 @@
     --warning-text: #e8c477;
     --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 1px 3px rgba(0, 0, 0, 0.25);
   }
+}
+
+:root[data-theme="dark"] {
+  --bg: #16171a;
+  --surface: #1e2024;
+  --surface-2: #26282d;
+  --border: #34363c;
+  --border-strong: #45474e;
+  --text: #ececec;
+  --text-muted: #a0a2a8;
+  --accent: #2dd4bf;
+  --accent-hover: #5eead4;
+  --accent-contrast: #06251f;
+  --accent-soft: #123c37;
+  --danger: #f87171;
+  --danger-soft: #3a1e1e;
+  --warning-soft: #3a2f16;
+  --warning-text: #e8c477;
+  --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 1px 3px rgba(0, 0, 0, 0.25);
 }
 
 * {

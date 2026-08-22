@@ -129,8 +129,24 @@
   margin: 0;
 }
 
-.errorSub {
-  margin: var(--space-2) 0 0;
-  font-size: 0.9rem;
-  color: var(--text-muted);
+.retryBtn {
+  margin-top: var(--space-3);
+  min-height: 40px;
+  padding: 0 var(--space-4);
+  font-weight: 600;
+  color: var(--danger);
+  background: transparent;
+  border: 1px solid var(--danger);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: background 0.15s ease, opacity 0.15s ease;
+}
+
+.retryBtn:hover:not(:disabled) {
+  background: var(--danger-soft);
+}
+
+.retryBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
