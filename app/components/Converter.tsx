@@ -39,6 +39,7 @@ export function Converter() {
   const [resultText, setResultText] = useState<string | null>(null);
   const [showPreview, setShowPreview] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [copyFailed, setCopyFailed] = useState(false);
   const [error, setError] = useState<ConvertError | null>(null);
   const [slowHint, setSlowHint] = useState(false);
   const [serverAwake, setServerAwake] = useState<boolean | null>(null);
@@ -70,6 +71,7 @@ export function Converter() {
     setResultText(null);
     setShowPreview(false);
     setCopied(false);
+    setCopyFailed(false);
     setError(null);
     setStatus("idle");
   }
@@ -104,6 +106,7 @@ export function Converter() {
     setResultText(null);
     setShowPreview(false);
     setCopied(false);
+    setCopyFailed(false);
     setSlowHint(false);
     if (serverAwake === false) {
       setSlowHint(true);
@@ -143,9 +146,12 @@ export function Converter() {
     try {
       await navigator.clipboard.writeText(resultText);
       setCopied(true);
+      setCopyFailed(false);
       setTimeout(() => setCopied(false), 2000);
     } catch {
-      /* El navegador no permite el portapapeles: no hacemos nada. */
+      // El navegador bloquea el portapapeles (permiso denegado / contexto no
+      // seguro): lo avisamos y sugerimos la vista previa como alternativa.
+      setCopyFailed(true);
     }
   }
 
@@ -221,16 +227,26 @@ export function Converter() {
       {/* Región de estado para lectores de pantalla y para el usuario */}
       <div aria-live="polite" className={styles.status}>
         {status === "converting" && (
-          <p className={styles.info}>
-            Procesando en el servidor…
-            {slowHint && (
-              <span className={styles.hint}>
-                {" "}
-                El servidor gratuito puede tardar hasta ~50 s en despertar la
-                primera vez. Gracias por la paciencia.
-              </span>
-            )}
-          </p>
+          <>
+            <p className={styles.info}>
+              Convirtiendo tus archivos…
+              {slowHint && (
+                <span className={styles.hint}>
+                  {" "}
+                  El servidor gratuito puede tardar hasta ~50 s en despertar la
+                  primera vez. Gracias por la paciencia.
+                </span>
+              )}
+            </p>
+            <div
+              className={styles.progressTrack}
+              role="progressbar"
+              aria-busy="true"
+              aria-label="Convirtiendo"
+            >
+              <div className={styles.progressBar} />
+            </div>
+          </>
         )}
 
         {status === "done" && result && (
@@ -250,10 +266,11 @@ export function Converter() {
                 <>
                   <button
                     type="button"
-                    className={styles.secondaryBtn}
+                    className={`${styles.secondaryBtn} ${copied ? styles.copied : ""}`}
                     onClick={handleCopy}
+                    title="Copia el texto al portapapeles para pegarlo en cualquier editor (Word, correo, un chat…)."
                   >
-                    {copied ? "¡Copiado!" : "Copiar"}
+                    {copied ? "✓ ¡Copiado!" : "Copiar texto Markdown"}
                   </button>
                   <button
                     type="button"
@@ -266,6 +283,12 @@ export function Converter() {
                 </>
               )}
             </div>
+            {copyFailed && (
+              <p className={styles.copyHint} role="alert">
+                No se pudo copiar automáticamente. Abre la vista previa y
+                selecciona el texto para copiarlo a mano.
+              </p>
+            )}
             {resultText !== null && showPreview && (
               <pre className={styles.preview} aria-label="Vista previa del Markdown">
                 {resultText}

@@ -200,6 +200,46 @@
   }
 }
 
+/* ---- Barra de progreso indeterminada (#3) ---- */
+/* La API no hace streaming (devuelve todo de golpe), así que no hay % real: una
+   barra indeterminada comunica "en curso" con más claridad que solo el spinner.
+   Bajo prefers-reduced-motion la animación se detiene (regla global), por eso la
+   pista lleva un fondo tenue que sigue leyéndose como "trabajando". */
+.progressTrack {
+  position: relative;
+  width: 100%;
+  height: 6px;
+  margin-top: var(--space-3);
+  overflow: hidden;
+  background: var(--accent-soft);
+  border-radius: 999px;
+}
+
+.progressBar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  width: 40%;
+  background: var(--accent);
+  border-radius: 999px;
+  animation: indeterminate 1.4s ease-in-out infinite;
+}
+
+@keyframes indeterminate {
+  0% {
+    left: -40%;
+    width: 40%;
+  }
+  50% {
+    width: 55%;
+  }
+  100% {
+    left: 100%;
+    width: 40%;
+  }
+}
+
 /* ---- Acciones del resultado + botón secundario ---- */
 .resultActions {
   display: flex;
@@ -221,6 +261,21 @@
 
 .secondaryBtn:hover {
   background: var(--accent-soft);
+}
+
+/* Confirmación visible del botón "Copiar" (#4): al copiar, se rellena en verde
+   para que también un usuario no técnico note que algo pasó. */
+.secondaryBtn.copied {
+  color: var(--accent-contrast);
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+/* Aviso corto si el navegador bloquea el portapapeles. */
+.copyHint {
+  margin: var(--space-2) 0 0;
+  font-size: 0.85rem;
+  color: var(--warning-text);
 }
 
 /* ---- Vista previa del Markdown ---- */
