@@ -182,3 +182,22 @@
   opacity: 0.5;
   cursor: not-allowed;
 }
+
+/* ---- Spinner del botón "Convirtiendo…" (igual que en Converter.module.css) ---- */
+.spinner {
+  display: inline-block;
+  width: 1em;
+  height: 1em;
+  margin-right: 0.5em;
+  vertical-align: -0.15em;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

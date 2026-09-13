@@ -303,7 +303,7 @@ export function Converter() {
         {status === "converting" && (
           <>
             <p className={styles.info}>
-              Convirtiendo tus archivos…
+              {mode === "paste" ? "Convirtiendo tu texto…" : "Convirtiendo tus archivos…"}
               {slowHint && (
                 <span className={styles.hint}>
                   {" "}

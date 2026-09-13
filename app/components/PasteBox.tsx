@@ -136,7 +136,14 @@ export function PasteBox({ onConvert, disabled = false }: PasteBoxProps) {
           onClick={handleConvertClick}
           disabled={!canConvert}
         >
-          Convertir a Markdown
+          {disabled ? (
+            <>
+              <span className={styles.spinner} aria-hidden="true" />
+              Convirtiendo…
+            </>
+          ) : (
+            "Convertir a Markdown"
+          )}
         </button>
         <button
           type="button"
