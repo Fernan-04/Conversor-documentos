@@ -139,7 +139,16 @@
 }
 
 .downloadBtn {
-  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35em;
+  /* `min-width: 0` es lo que permite que el botón se achique dentro del flex
+     de `.resultActions` en vez de forzar su ancho al nombre completo del
+     archivo (eso partía el botón en 2 líneas y desalineaba a los vecinos en
+     pantallas de escritorio, donde SÍ cabe al lado de otro botón; en móvil
+     todo se apila y el problema quedaba oculto). */
+  min-width: 0;
+  max-width: 100%;
   min-height: 44px;
   padding: 0 var(--space-5);
   font-size: 1rem;
@@ -150,6 +159,15 @@
   border-radius: var(--radius-sm);
   cursor: pointer;
   transition: background 0.15s ease;
+}
+
+/* Nombre del archivo: una sola línea, con "…" si no cabe (igual que en
+   FileList.module.css:.name). "Descargar" siempre queda legible. */
+.downloadName {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
 }
 
 .downloadBtn:hover {

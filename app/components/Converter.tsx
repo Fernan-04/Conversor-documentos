@@ -371,8 +371,9 @@ export function Converter() {
                 type="button"
                 className={styles.downloadBtn}
                 onClick={handleDownload}
+                title={`Descargar ${result.filename}`}
               >
-                Descargar {result.filename}
+                Descargar <span className={styles.downloadName}>{result.filename}</span>
               </button>
               {resultText !== null && (
                 <>
