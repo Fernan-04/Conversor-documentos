@@ -18,9 +18,11 @@ import {
 } from "../lib/files";
 import { Dropzone } from "./Dropzone";
 import { FileList } from "./FileList";
+import { PasteBox } from "./PasteBox";
 import styles from "./Converter.module.css";
 
 type Status = "idle" | "converting" | "done" | "error";
+type Mode = "upload" | "paste";
 
 function errorTitle(error: ConvertError): string {
   if (error.code === "INFRA_RATE_LIMITED") return "Demasiadas peticiones";
@@ -31,6 +33,7 @@ function errorTitle(error: ConvertError): string {
 }
 
 export function Converter() {
+  const [mode, setMode] = useState<Mode>("upload");
   const [files, setFiles] = useState<File[]>([]);
   const [status, setStatus] = useState<Status>("idle");
   const [result, setResult] = useState<ConvertResult | null>(null);
@@ -44,6 +47,8 @@ export function Converter() {
   const [slowHint, setSlowHint] = useState(false);
   const [serverAwake, setServerAwake] = useState<boolean | null>(null);
   const slowTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const uploadTabRef = useRef<HTMLButtonElement>(null);
+  const pasteTabRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     let alive = true;
@@ -98,8 +103,26 @@ export function Converter() {
     resetOutput();
   }
 
-  async function handleConvert() {
-    if (!canConvert) return;
+  function handleModeChange(next: Mode) {
+    if (next === mode) return;
+    setMode(next);
+    resetOutput();
+  }
+
+  // Un archivo sintético del cuadro "Pegar texto" (§Ronda 6): se guarda en el
+  // mismo estado `files` (así "Reintentar" y el resto del flujo funcionan
+  // igual que al subir un archivo) y se convierte de inmediato, pasándolo
+  // explícito para no depender de que `setFiles` ya se haya aplicado.
+  function handlePasteConvert(file: File) {
+    setFiles([file]);
+    resetOutput();
+    handleConvert([file]);
+  }
+
+  async function handleConvert(filesOverride?: File[]) {
+    const target = filesOverride ?? files;
+    if (!filesOverride && !canConvert) return;
+    if (target.length === 0) return;
     setStatus("converting");
     setError(null);
     setResult(null);
@@ -114,10 +137,10 @@ export function Converter() {
       slowTimer.current = setTimeout(() => setSlowHint(true), 3000);
     }
     try {
-      const res = await convertFiles(files);
+      const res = await convertFiles(target);
       setResult(res);
       // Un solo archivo => tenemos el Markdown en texto para copiar/previsualizar.
-      setResultText(files.length === 1 ? await res.blob.text() : null);
+      setResultText(target.length === 1 ? await res.blob.text() : null);
       setStatus("done");
       setServerAwake(true);
     } catch (err) {
@@ -157,70 +180,121 @@ export function Converter() {
 
   return (
     <section className={styles.card} aria-label="Conversor de documentos">
-      <Dropzone onFiles={addFiles} disabled={status === "converting"} />
+      <div className={styles.tabs} role="tablist" aria-label="Forma de entrada">
+        <button
+          ref={uploadTabRef}
+          type="button"
+          role="tab"
+          id="tab-upload"
+          aria-selected={mode === "upload"}
+          aria-controls="panel-upload"
+          tabIndex={mode === "upload" ? 0 : -1}
+          className={`${styles.tab} ${mode === "upload" ? styles.tabActive : ""}`}
+          onClick={() => handleModeChange("upload")}
+          onKeyDown={(e) => {
+            if (e.key === "ArrowRight" || e.key === "ArrowLeft") {
+              handleModeChange("paste");
+              pasteTabRef.current?.focus();
+            }
+          }}
+        >
+          Subir archivos
+        </button>
+        <button
+          ref={pasteTabRef}
+          type="button"
+          role="tab"
+          id="tab-paste"
+          aria-selected={mode === "paste"}
+          aria-controls="panel-paste"
+          tabIndex={mode === "paste" ? 0 : -1}
+          className={`${styles.tab} ${mode === "paste" ? styles.tabActive : ""}`}
+          onClick={() => handleModeChange("paste")}
+          onKeyDown={(e) => {
+            if (e.key === "ArrowRight" || e.key === "ArrowLeft") {
+              handleModeChange("upload");
+              uploadTabRef.current?.focus();
+            }
+          }}
+        >
+          Pegar texto
+        </button>
+      </div>
 
-      <FileList
-        files={files}
-        onRemove={removeFile}
-        disabled={status === "converting"}
-      />
+      {mode === "upload" && (
+        <div id="panel-upload" role="tabpanel" aria-labelledby="tab-upload" className={styles.panel}>
+          <Dropzone onFiles={addFiles} disabled={status === "converting"} />
 
-      {files.length > 0 && (
-        <p className={styles.counter}>
-          {files.length} archivo{files.length !== 1 ? "s" : ""} ·{" "}
-          {formatBytes(totalBytes)} de {formatBytes(MAX_TOTAL_BYTES)}
-        </p>
-      )}
-
-      {invalidFiles.length > 0 && (
-        <p className={styles.warn} role="alert">
-          Hay archivos que no se pueden convertir: revisa que el formato sea
-          compatible y que cada archivo no supere{" "}
-          {formatBytes(MAX_FILE_SIZE_BYTES)}. Quítalos para continuar.
-        </p>
-      )}
-
-      {tooMany && (
-        <p className={styles.warn} role="alert">
-          Puedes convertir hasta {MAX_FILES} archivos a la vez. Quita algunos
-          para continuar.
-        </p>
-      )}
-
-      {tooLargeTotal && !tooMany && (
-        <p className={styles.warn} role="alert">
-          El tamaño total supera {formatBytes(MAX_TOTAL_BYTES)}. Quita algún
-          archivo para continuar.
-        </p>
-      )}
-
-      {files.length > 0 && (
-        <div className={styles.actions}>
-          <button
-            type="button"
-            className={styles.primaryBtn}
-            onClick={handleConvert}
-            disabled={!canConvert}
-          >
-            {status === "converting" ? (
-              <>
-                <span className={styles.spinner} aria-hidden="true" />
-                Convirtiendo…
-              </>
-            ) : files.length > 1 ? (
-              `Convertir ${files.length} archivos`
-            ) : (
-              "Convertir a Markdown"
-            )}
-          </button>
-          <button
-            type="button"
-            className={styles.ghostBtn}
-            onClick={clearAll}
+          <FileList
+            files={files}
+            onRemove={removeFile}
             disabled={status === "converting"}
-          >
-            Limpiar
-          </button>
+          />
+
+          {files.length > 0 && (
+            <p className={styles.counter}>
+              {files.length} archivo{files.length !== 1 ? "s" : ""} ·{" "}
+              {formatBytes(totalBytes)} de {formatBytes(MAX_TOTAL_BYTES)}
+            </p>
+          )}
+
+          {invalidFiles.length > 0 && (
+            <p className={styles.warn} role="alert">
+              Hay archivos que no se pueden convertir: revisa que el formato sea
+              compatible y que cada archivo no supere{" "}
+              {formatBytes(MAX_FILE_SIZE_BYTES)}. Quítalos para continuar.
+            </p>
+          )}
+
+          {tooMany && (
+            <p className={styles.warn} role="alert">
+              Puedes convertir hasta {MAX_FILES} archivos a la vez. Quita algunos
+              para continuar.
+            </p>
+          )}
+
+          {tooLargeTotal && !tooMany && (
+            <p className={styles.warn} role="alert">
+              El tamaño total supera {formatBytes(MAX_TOTAL_BYTES)}. Quita algún
+              archivo para continuar.
+            </p>
+          )}
+
+          {files.length > 0 && (
+            <div className={styles.actions}>
+              <button
+                type="button"
+                className={styles.primaryBtn}
+                onClick={() => handleConvert()}
+                disabled={!canConvert}
+              >
+                {status === "converting" ? (
+                  <>
+                    <span className={styles.spinner} aria-hidden="true" />
+                    Convirtiendo…
+                  </>
+                ) : files.length > 1 ? (
+                  `Convertir ${files.length} archivos`
+                ) : (
+                  "Convertir a Markdown"
+                )}
+              </button>
+              <button
+                type="button"
+                className={styles.ghostBtn}
+                onClick={clearAll}
+                disabled={status === "converting"}
+              >
+                Limpiar
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
+      {mode === "paste" && (
+        <div id="panel-paste" role="tabpanel" aria-labelledby="tab-paste" className={styles.panel}>
+          <PasteBox onConvert={handlePasteConvert} disabled={status === "converting"} />
         </div>
       )}
 
@@ -304,7 +378,7 @@ export function Converter() {
             <button
               type="button"
               className={styles.retryBtn}
-              onClick={handleConvert}
+              onClick={() => handleConvert()}
               disabled={!canConvert}
             >
               Reintentar

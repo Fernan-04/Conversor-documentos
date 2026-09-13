@@ -17,7 +17,8 @@ export default function Home() {
           </h1>
           <p className={styles.tagline}>
             Convierte <strong>PDF, Word, PowerPoint, Excel, texto y CSV</strong>{" "}
-            a Markdown. Sin instalar nada.
+            a Markdown, o <strong>pega texto directamente</strong> desde una
+            web, Google Docs o Word. Sin instalar nada.
           </p>
         </header>
 
@@ -36,7 +37,7 @@ export default function Home() {
 
           <h2 className={styles.limitsTitle}>Formatos y límites</h2>
           <ul className={styles.limits}>
-            <li>Formatos: PDF, DOCX, PPTX, XLSX, TXT, MD, CSV y TSV.</li>
+            <li>Formatos: PDF, DOCX, PPTX, XLSX, TXT, MD, CSV, TSV y HTML.</li>
             <li>
               Hasta {formatBytes(MAX_FILE_SIZE_BYTES)} por archivo y {MAX_FILES}{" "}
               archivos por conversión.

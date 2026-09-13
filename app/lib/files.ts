@@ -9,6 +9,8 @@ export const SUPPORTED_EXTENSIONS = [
   ".md",
   ".csv",
   ".tsv",
+  ".html",
+  ".htm",
 ] as const;
 
 export const ACCEPT_ATTR = SUPPORTED_EXTENSIONS.join(",");
@@ -18,6 +20,10 @@ export const ACCEPT_ATTR = SUPPORTED_EXTENSIONS.join(",");
 export const MAX_FILE_SIZE_BYTES = 25 * 1024 * 1024; // 25 MB por archivo
 export const MAX_FILES = 20; // nº máximo de archivos por conversión
 export const MAX_TOTAL_BYTES = 60 * 1024 * 1024; // 60 MB en total
+// Límite del cuadro "Pegar texto" (no hay archivo real, así que se limita el
+// tamaño del texto pegado en el cliente; el servidor igual valida el tamaño
+// del archivo sintético que se genera a partir de él).
+export const MAX_PASTE_CHARS = 2_000_000; // ~2 MB de texto
 
 export interface FormatInfo {
   label: string;
@@ -33,6 +39,8 @@ const FORMATS: Record<string, FormatInfo> = {
   ".md": { label: "Markdown", short: "MD" },
   ".csv": { label: "CSV", short: "CSV" },
   ".tsv": { label: "TSV", short: "TSV" },
+  ".html": { label: "HTML", short: "HTML" },
+  ".htm": { label: "HTML", short: "HTML" },
 };
 
 export type FileIssue = "too-large" | "unsupported";
@@ -66,6 +74,37 @@ export function formatBytes(bytes: number): string {
 /** Clave estable para deduplicar archivos seleccionados. */
 export function fileKey(file: File): string {
   return `${file.name}:${file.size}:${file.lastModified}`;
+}
+
+/** Primeras palabras del texto pegado, saneadas, como nombre de archivo por
+ * defecto (p. ej. "Hackatón Internacional de..." -> "Hackaton-Internacional-de"). */
+function guessPasteName(text: string): string {
+  const firstLine = text.split("\n").find((l) => l.trim().length > 0) ?? "";
+  const slug = firstLine
+    .trim()
+    .slice(0, 50)
+    .replace(/[\\/:*?"<>|]/g, "")
+    .trim();
+  return slug || "texto-pegado";
+}
+
+// Etiquetas mínimas que indican que el HTML del portapapeles trae formato real
+// (título, lista, tabla, negrita, enlace) y no es solo texto plano envuelto en
+// un <meta>/<span> sin estructura (lo que pegan algunos editores simples).
+const _RICH_HTML_RE = /<(h[1-6]|ul|ol|table|strong|b|em|i|a)[\s>]/i;
+
+/**
+ * Convierte el texto pegado del portapapeles en un `File` sintético para
+ * reutilizar el mismo flujo de conversión que subir un archivo (§Ronda 6,
+ * "Pegar texto"). Si el HTML trae formato real se manda como `.html` (conserva
+ * títulos/listas/tablas/enlaces); si no, como `.txt` (más liviano).
+ */
+export function pasteToFile(html: string, text: string, name?: string): File {
+  const base = (name?.trim() || guessPasteName(text)).replace(/\.(html?|txt)$/i, "");
+  if (html && _RICH_HTML_RE.test(html)) {
+    return new File([html], `${base}.html`, { type: "text/html" });
+  }
+  return new File([text], `${base}.txt`, { type: "text/plain" });
 }
 
 /** Dispara la descarga de un blob en el navegador. */
