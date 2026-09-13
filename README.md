@@ -1,10 +1,9 @@
 # Markdocs (doc2md-web)
 
-**[Markdocs](https://conversor-documentos-one.vercel.app)**: página única
-(Next.js + TypeScript) para convertir documentos a Markdown. El repo y el
-paquete se llaman `doc2md-web` (nombre histórico); "Markdocs" es el nombre de
-producto que ve el usuario. Consume la API de conversión `doc2md` (FastAPI,
-desplegada aparte en Render).
+**Markdocs**: página única (Next.js + TypeScript) para convertir documentos a
+Markdown. El repo y el paquete se llaman `doc2md-web` (nombre histórico);
+"Markdocs" es el nombre de producto que ve el usuario. Consume la API de
+conversión `doc2md` (FastAPI, desplegada aparte en Render).
 
 - Arrastra y suelta (o elige) **PDF, Word, PowerPoint, Excel, texto, CSV/TSV y
   HTML**.
@@ -30,10 +29,10 @@ npm run dev                    # http://localhost:3000
 
 | Variable | Descripción |
 |---|---|
-| `NEXT_PUBLIC_API_URL` | URL pública de la API de conversión (Render). Sin barra final. |
+| `NEXT_PUBLIC_API_URL` | URL pública de tu propia API de conversión (Render u otro host). Sin barra final. Ejemplo: `https://tu-api-conversor.onrender.com`. |
 
-Si no se define, usa como fallback la instancia desplegada
-(`https://api-conversor-gvzr.onrender.com`).
+Defínela siempre: sin ella, `lib/api.ts` cae a un valor por defecto pensado
+para la instancia original del autor, no para la tuya.
 
 ## Despliegue en Vercel
 
@@ -42,8 +41,8 @@ Si no se define, usa como fallback la instancia desplegada
    (autodetectado). No cambies el build command.
 3. En **Environment Variables** agrega `NEXT_PUBLIC_API_URL` con la URL de tu API
    de Render.
-4. **Deploy**. Vercel te da una URL (la de producción hoy es
-   `https://conversor-documentos-one.vercel.app`).
+4. **Deploy**. Vercel te da tu propia URL, con esta forma (ejemplo, no es una
+   URL real): `https://tu-markdocs.vercel.app`.
 
 > Recuerda: al abrir la web por primera vez tras un rato de inactividad, la API
 > gratuita de Render puede tardar ~50 s en “despertar”. La UI avisa de esto.
