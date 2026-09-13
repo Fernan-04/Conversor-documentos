@@ -32,6 +32,32 @@ function errorTitle(error: ConvertError): string {
   return "Algo falló de nuestro lado";
 }
 
+// Mensajes de carga en etapas (puramente cosméticos: no reflejan progreso real
+// del servidor, que no lo expone — solo el paso del tiempo). El objetivo es
+// que el usuario sienta que algo sigue pasando en vez de creer que la app se
+// congeló. Los tiempos están calibrados contra mediciones reales: la mayoría
+// de conversiones terminan en el paso 2; el paso 4 (~20s) coincide con el
+// peor caso medido (PDFs con varias imágenes grandes + OCR).
+const STAGE_DELAYS_MS = [0, 1200, 3500, 9000, 20000];
+
+function stageMessage(index: number, mode: Mode, fileCount: number): string {
+  const many = mode === "upload" && fileCount > 1;
+  switch (index) {
+    case 0:
+      return "Conectando con el servidor…";
+    case 1:
+      if (mode === "paste") return "Enviando tu texto…";
+      return many ? "Enviando tus archivos…" : "Enviando tu archivo…";
+    case 2:
+      if (mode === "paste") return "Convirtiendo tu texto a Markdown…";
+      return many ? "Convirtiendo tus archivos a Markdown…" : "Convirtiendo tu archivo a Markdown…";
+    case 3:
+      return "Seguimos trabajando en ello, ya casi está…";
+    default:
+      return "Esto está tardando un poco más de lo normal, pero sigue en marcha…";
+  }
+}
+
 export function Converter() {
   const [mode, setMode] = useState<Mode>("upload");
   const [files, setFiles] = useState<File[]>([]);
@@ -45,8 +71,10 @@ export function Converter() {
   const [copyFailed, setCopyFailed] = useState(false);
   const [error, setError] = useState<ConvertError | null>(null);
   const [slowHint, setSlowHint] = useState(false);
+  const [stageIndex, setStageIndex] = useState(0);
   const [serverAwake, setServerAwake] = useState<boolean | null>(null);
   const slowTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const stageTimers = useRef<ReturnType<typeof setTimeout>[]>([]);
   const uploadTabRef = useRef<HTMLButtonElement>(null);
   const pasteTabRef = useRef<HTMLButtonElement>(null);
 
@@ -131,6 +159,14 @@ export function Converter() {
     setCopied(false);
     setCopyFailed(false);
     setSlowHint(false);
+    setStageIndex(0);
+    // Etapas de carga (cosméticas, ver `stageMessage`): programadas todas de
+    // una vez al iniciar, para que el texto avance solo aunque la petición
+    // tarde.
+    stageTimers.current.forEach(clearTimeout);
+    stageTimers.current = STAGE_DELAYS_MS.slice(1).map((delay, i) =>
+      setTimeout(() => setStageIndex(i + 1), delay)
+    );
     if (serverAwake === false) {
       setSlowHint(true);
     } else {
@@ -156,6 +192,8 @@ export function Converter() {
       setStatus("error");
     } finally {
       if (slowTimer.current) clearTimeout(slowTimer.current);
+      stageTimers.current.forEach(clearTimeout);
+      stageTimers.current = [];
       setSlowHint(false);
     }
   }
@@ -303,7 +341,7 @@ export function Converter() {
         {status === "converting" && (
           <>
             <p className={styles.info}>
-              {mode === "paste" ? "Convirtiendo tu texto…" : "Convirtiendo tus archivos…"}
+              {stageMessage(stageIndex, mode, files.length)}
               {slowHint && (
                 <span className={styles.hint}>
                   {" "}
